@@ -255,6 +255,13 @@ export class Player implements OnInit, OnDestroy {
           // Check if we still have videos after update
           if (updatedProfile.videos && updatedProfile.videos.length > 0) {
             this.currentVideoIndex.set(0);
+            // If there's only 1 video, the src doesn't change, so loadedmetadata won't fire. We must play manually.
+            if (updatedProfile.videos.length === 1) {
+              if (this.videoPlayer && this.videoPlayer.nativeElement) {
+                this.videoPlayer.nativeElement.currentTime = 0;
+                this.videoPlayer.nativeElement.play().catch(e => console.error("Play failed on loop", e));
+              }
+            }
           } else {
             console.warn('Playlist became empty after update.');
           }
@@ -263,6 +270,13 @@ export class Player implements OnInit, OnDestroy {
           console.error('Failed to auto-update playlist, looping local copy', err);
           // Fallback: loop local copy
           this.currentVideoIndex.set(0);
+          // @ts-ignore - p.videos is already checked at the beginning of the function
+          if (p.videos.length === 1) {
+            if (this.videoPlayer && this.videoPlayer.nativeElement) {
+              this.videoPlayer.nativeElement.currentTime = 0;
+              this.videoPlayer.nativeElement.play().catch(e => console.error("Play failed on fallback loop", e));
+            }
+          }
         }
       });
     } else {
