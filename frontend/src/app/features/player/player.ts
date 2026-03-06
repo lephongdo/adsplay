@@ -22,6 +22,7 @@ export class Player implements OnInit, OnDestroy {
 
   private activityTimeout: any;
   private heartbeatInterval: any;
+  private autoReloadTimeout: any;
   private heartbeatFailures = 0;
 
   @ViewChild('videoPlayer') videoPlayer!: ElementRef<HTMLVideoElement>;
@@ -63,20 +64,20 @@ export class Player implements OnInit, OnDestroy {
       }
     });
 
-    // Initialize state immediately in case we are already in fullscreen
     this.isFullscreen.set(!!document.fullscreenElement);
 
-    // Run high-frequency DOM events OUTSIDE the Angular zone to prevent Change Detection spam
     this.zone.runOutsideAngular(() => {
       document.addEventListener('fullscreenchange', this.onFullscreenChangeBound);
       document.addEventListener('mousemove', this.onMouseMoveBound);
       document.addEventListener('click', this.onMouseMoveBound);
+
+      // Memory Leak Prevention: Hard reload the digital signage every 24 hours
+      this.autoReloadTimeout = setTimeout(() => {
+        window.location.reload();
+      }, 24 * 60 * 60 * 1000);
     });
 
-    // Initial timer start
     this.resetActivityTimer();
-
-    // Start Heartbeat
     this.startHeartbeat();
   }
 
@@ -86,12 +87,10 @@ export class Player implements OnInit, OnDestroy {
     document.removeEventListener('click', this.onMouseMoveBound);
     if (this.heartbeatInterval) clearInterval(this.heartbeatInterval);
     if (this.activityTimeout) clearTimeout(this.activityTimeout);
+    if (this.autoReloadTimeout) clearTimeout(this.autoReloadTimeout);
   }
 
-  // Reset the 3-second activity timer efficiently
   private resetActivityTimer() {
-    // Only re-enter the Angular Zone to update the signal if the cursor was previously hidden.
-    // This prevents triggering Angular CD 60+ times a second while the user moves the mouse.
     if (this.isCursorHidden()) {
       this.zone.run(() => {
         this.isCursorHidden.set(false);
@@ -100,9 +99,7 @@ export class Player implements OnInit, OnDestroy {
 
     if (this.activityTimeout) clearTimeout(this.activityTimeout);
 
-    // Only hide cursor if we are actually playing a profile
     if (this.profile()) {
-      // Run the timeout outside the zone, then re-enter to hide the cursor
       this.zone.runOutsideAngular(() => {
         this.activityTimeout = setTimeout(() => {
           this.zone.run(() => {
@@ -114,19 +111,17 @@ export class Player implements OnInit, OnDestroy {
   }
 
   startHeartbeat() {
-    // Send immediately if we have a profile loaded
     const sendPulse = () => {
       const p = this.profile();
       if (p && p.id) {
         this.api.sendHeartbeat(p.id).subscribe({
           next: () => {
-            this.heartbeatFailures = 0; // Reset counter on success
+            this.heartbeatFailures = 0;
           },
           error: (e) => {
             console.error('Heartbeat failed', e);
             this.heartbeatFailures++;
 
-            // Stop spamming the network if the backend is clearly down
             if (this.heartbeatFailures >= 5) {
               console.warn('Heartbeat failed 5 times continuously. Stopping polling.');
               if (this.heartbeatInterval) clearInterval(this.heartbeatInterval);
@@ -136,7 +131,6 @@ export class Player implements OnInit, OnDestroy {
       }
     };
 
-    // Poll every 30 seconds
     this.heartbeatInterval = setInterval(sendPulse, 30000);
   }
 
@@ -160,14 +154,12 @@ export class Player implements OnInit, OnDestroy {
       next: (profiles) => {
         const found = profiles.find(p => slugify(p.name) === name);
         if (found) {
-          // Fetch details to ensure we have the videos
           this.api.getProfile(found.id).subscribe({
             next: (detailedProfile) => {
               this.profile.set(detailedProfile);
               this.currentVideoIndex.set(0);
               this.loading.set(false);
 
-              // Reset heartbeat failure count on new profile load
               this.heartbeatFailures = 0;
               this.api.sendHeartbeat(found.id).subscribe();
             },
@@ -206,9 +198,14 @@ export class Player implements OnInit, OnDestroy {
     const video = event.target as HTMLVideoElement;
     if (video) {
       this.isVideoPortrait.set(video.videoHeight > video.videoWidth);
-      // Once metadata is loaded (like size), we safely trigger playback
       this.playVideo();
     }
+  }
+
+  // Prevents the player from freezing if a video file is corrupted or missing
+  onVideoError(event: any) {
+    console.error("Video failed to load or play. Skipping to next to prevent freeze.", event);
+    this.onVideoEnded();
   }
 
   async playVideo() {
@@ -225,7 +222,6 @@ export class Player implements OnInit, OnDestroy {
       this.showUnmuteOverlay.set(false);
     } catch (err) {
       console.warn("Autoplay with sound failed, falling back to muted", err);
-      // Fallback for browsers blocking unmuted autoplay
       this.videoPlayer.nativeElement.muted = true;
       try {
         const fallbackPromise = this.videoPlayer.nativeElement.play();
@@ -234,7 +230,6 @@ export class Player implements OnInit, OnDestroy {
           this.bgVideo.nativeElement.play().catch(() => { });
         }
         await fallbackPromise;
-        // If muted play works, show overlay to let user unmute
         this.showUnmuteOverlay.set(true);
       } catch (e) {
         console.error("Autoplay failed completely", e);
@@ -265,18 +260,14 @@ export class Player implements OnInit, OnDestroy {
 
     let nextIndex = this.currentVideoIndex() + 1;
 
-    // Check if we reached the end of the playlist
     if (nextIndex >= p.videos.length) {
       console.log('Playlist ended, checking for updates...');
-      // Fetch latest profile data
       this.api.getProfile(p.id).subscribe({
         next: (updatedProfile) => {
           this.profile.set(updatedProfile);
 
-          // Check if we still have videos after update
           if (updatedProfile.videos && updatedProfile.videos.length > 0) {
             this.currentVideoIndex.set(0);
-            // If there's only 1 video, the src doesn't change, so loadedmetadata won't fire. We must play manually.
             if (updatedProfile.videos.length === 1) {
               if (this.videoPlayer && this.videoPlayer.nativeElement) {
                 this.videoPlayer.nativeElement.currentTime = 0;
@@ -290,9 +281,8 @@ export class Player implements OnInit, OnDestroy {
         },
         error: (err) => {
           console.error('Failed to auto-update playlist, looping local copy', err);
-          // Fallback: loop local copy
           this.currentVideoIndex.set(0);
-          // @ts-ignore - p.videos is already checked at the beginning of the function
+          // @ts-ignore
           if (p.videos.length === 1) {
             if (this.videoPlayer && this.videoPlayer.nativeElement) {
               this.videoPlayer.nativeElement.currentTime = 0;
@@ -302,7 +292,6 @@ export class Player implements OnInit, OnDestroy {
         }
       });
     } else {
-      // Normal progression
       this.currentVideoIndex.set(nextIndex);
     }
   }

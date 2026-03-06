@@ -1,13 +1,11 @@
 <div #container class="fixed inset-0 bg-black flex items-center justify-center z-50 overflow-hidden font-sans"
     [class.cursor-none]="isCursorHidden()">
-    <!-- Background Gradient Orb -->
     @if (!profile()) {
     <div
         class="absolute top-0 left-1/2 -translate-x-1/2 w-[50rem] h-[50rem] bg-brand-primary opacity-10 rounded-full pointer-events-none">
     </div>
     }
 
-    <!-- 1. Loading State -->
     @if (loading()) {
     <div class="flex flex-col items-center space-y-8 animate-fade-in relative z-10">
         <div class="relative w-24 h-24">
@@ -21,7 +19,6 @@
     </div>
     }
 
-    <!-- 2. Profile Selection -->
     @else if (!profile()) {
     <div
         class="w-full max-w-6xl px-4 flex flex-col items-center max-h-screen overflow-y-auto py-12 relative z-10 animate-fade-in">
@@ -71,7 +68,6 @@
     </div>
     }
 
-    <!-- 3. Video Player (State: Profile Selected) -->
     @else {
     @if (!profile()?.videos || profile()?.videos?.length === 0) {
     <div class="flex flex-col items-center space-y-6 animate-fade-in relative z-10">
@@ -83,26 +79,20 @@
     </div>
     } @else {
     <div class="w-full h-full bg-black relative group/player flex items-center justify-center overflow-hidden">
-        <!-- Blurred Background for Portrait Videos (Always in DOM for sync, conditionally visible) -->
         <div class="absolute inset-0 z-0 scale-125 blur-3xl transition-opacity duration-1000"
             [class.opacity-40]="isVideoPortrait()" [class.opacity-0]="!isVideoPortrait()">
-            <video #bgVideo [src]="currentVideoSrc()" class="w-full h-full object-cover" muted playsinline
-                tabindex="-1">
+            <video #bgVideo [src]="currentVideoSrc()" class="w-full h-full object-cover" muted playsinline tabindex="-1"
+                (error)="onVideoError($event)">
             </video>
         </div>
 
-        <!-- object-contain is crucial for signage to avoid cropping info -->
         <video #videoPlayer [src]="currentVideoSrc()"
             class="relative z-10 max-w-full max-h-full w-auto h-auto object-contain shadow-2xl transition-all duration-700"
             [class.scale-95]="isVideoPortrait() && !isFullscreen()" playsinline (ended)="onVideoEnded()"
-            (loadedmetadata)="onMetadataLoaded($event)" (click)="toggleFullscreen()">
+            (error)="onVideoError($event)" (loadedmetadata)="onMetadataLoaded($event)" (click)="toggleFullscreen()">
         </video>
-
-        <!-- Overlay Controls Removed for Ads Mode -->
     </div>
 
-
-    <!-- Consolidated Overlay (Unmute / Fullscreen) -->
     @if (!isCursorHidden() && (!isFullscreen() || showUnmuteOverlay())) {
     <div (click)="interact()"
         class="absolute inset-0 z-[70] bg-black/60 flex flex-col items-center justify-center cursor-pointer animate-fade-in group/overlay">
