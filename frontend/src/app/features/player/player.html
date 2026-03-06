@@ -79,9 +79,7 @@
     </div>
     } @else {
     <div class="w-full h-full bg-black relative group/player flex items-center justify-center overflow-hidden">
-
-
-        <video #videoPlayer [src]="currentVideoSrc()"
+        <video #videoPlayer [src]="localVideoUrl()"
             class="relative z-10 max-w-full max-h-full w-full h-full object-contain shadow-2xl transition-all duration-700"
             [class.scale-95]="isVideoPortrait() && !isFullscreen()" playsinline webkit-playsinline x5-playsinline
             (ended)="onVideoEnded()" (error)="onVideoError($event)" (loadedmetadata)="onMetadataLoaded($event)"

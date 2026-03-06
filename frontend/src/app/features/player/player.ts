@@ -20,6 +20,10 @@ export class Player implements OnInit, OnDestroy {
   isCursorHidden = signal(false);
   isVideoPortrait = signal(false);
 
+  // NEW: Signal to hold the local Object URL for the video
+  localVideoUrl = signal<string>('');
+  private currentObjectUrl: string | null = null;
+
   private activityTimeout: any;
   private heartbeatInterval: any;
   private autoReloadTimeout: any;
@@ -30,27 +34,18 @@ export class Player implements OnInit, OnDestroy {
 
   private endedSafetyTimeout: any;
 
-  currentVideoSrc = computed(() => {
-    const p = this.profile();
-    if (!p || !p.videos || p.videos.length === 0) return '';
-    const video = p.videos[this.currentVideoIndex()];
-    return `/uploads/${video.filename}`;
-  });
-
   private onFullscreenChangeBound = () => {
     this.zone.run(() => {
       const fs = !!document.fullscreenElement;
       console.log(`Fullscreen state changed: ${fs ? 'ENTERED' : 'EXITED'}`);
       this.isFullscreen.set(fs);
 
-      // If we exited fullscreen while playing, ensure the cursor/overlay becomes visible
       if (!fs && this.profile()) {
         this.isCursorHidden.set(false);
       }
     });
   }
 
-  // Mouse move event bound outside of Angular Zone to prevent massive CPU spiking
   private onMouseMoveBound = () => {
     this.resetActivityTimer();
   }
@@ -79,9 +74,6 @@ export class Player implements OnInit, OnDestroy {
       document.addEventListener('mousemove', this.onMouseMoveBound);
       document.addEventListener('click', this.onMouseMoveBound);
 
-      // Memory Leak Prevention: Hard reload the digital signage every 24 hours
-      // but only if we are NOT currently playing/fullscreen to avoid disruption,
-      // or at least wait for a moment of inactivity.
       this.autoReloadTimeout = setInterval(() => {
         if (!document.fullscreenElement) {
           console.log('Performing scheduled 24h reload...');
@@ -104,7 +96,10 @@ export class Player implements OnInit, OnDestroy {
     if (this.activityTimeout) clearTimeout(this.activityTimeout);
     if (this.autoReloadTimeout) clearTimeout(this.autoReloadTimeout);
 
-    // Explicitly cleanup video resources to prevent memory leaks
+    if (this.currentObjectUrl) {
+      URL.revokeObjectURL(this.currentObjectUrl);
+    }
+
     if (this.videoPlayer && this.videoPlayer.nativeElement) {
       this.videoPlayer.nativeElement.pause();
       this.videoPlayer.nativeElement.src = "";
@@ -185,6 +180,12 @@ export class Player implements OnInit, OnDestroy {
 
               this.heartbeatFailures = 0;
               this.api.sendHeartbeat(found.id).subscribe();
+
+              // Sync cache and start playing the first video
+              if (detailedProfile.videos) {
+                this.syncCacheWithBackend(detailedProfile.videos);
+                this.loadAndPlayVideo(0);
+              }
             },
             error: (e) => {
               console.error("Failed to load details", e);
@@ -203,6 +204,73 @@ export class Player implements OnInit, OnDestroy {
       }
     });
   }
+
+  // --- NEW: CACHING & MEMORY MANAGEMENT ---
+
+  /**
+   * Fetches the video from local cache. If it doesn't exist, downloads it.
+   */
+  private async loadAndPlayVideo(index: number) {
+    const p = this.profile();
+    if (!p || !p.videos || p.videos.length === 0) return;
+
+    const video = p.videos[index];
+    const serverUrl = `/uploads/${video.filename}`;
+
+    try {
+      const cache = await caches.open('adsplay-video-cache');
+      let response = await cache.match(serverUrl);
+
+      if (!response) {
+        console.log(`Downloading ${video.filename} to local TV storage...`);
+        response = await fetch(serverUrl);
+        if (response.ok) {
+          await cache.put(serverUrl, response.clone());
+        }
+      } else {
+        console.log(`Playing ${video.filename} directly from TV storage (0 bandwidth)`);
+      }
+
+      const blob = await response.blob();
+
+      if (this.currentObjectUrl) {
+        URL.revokeObjectURL(this.currentObjectUrl);
+      }
+
+      this.currentObjectUrl = URL.createObjectURL(blob);
+      this.localVideoUrl.set(this.currentObjectUrl);
+
+    } catch (error) {
+      console.error("Cache failed, falling back to network stream", error);
+      this.localVideoUrl.set(serverUrl);
+    }
+  }
+
+  /**
+   * Prevents TV hard drives from filling up by deleting old, removed videos
+   */
+  private async syncCacheWithBackend(validVideos: Video[]) {
+    try {
+      const cache = await caches.open('adsplay-video-cache');
+      const cachedRequests = await cache.keys();
+      const validFilenames = validVideos.map(v => v.filename);
+
+      for (const request of cachedRequests) {
+        const urlParts = request.url.split('/');
+        const cachedFilename = urlParts[urlParts.length - 1];
+
+        // If the video on the hard drive is NO LONGER in the backend playlist, delete it.
+        if (!validFilenames.includes(cachedFilename)) {
+          console.log(`🧹 Garbage Collector: Deleting old video to free up TV space: ${cachedFilename}`);
+          await cache.delete(request);
+        }
+      }
+    } catch (e) {
+      console.error("Cache cleanup failed", e);
+    }
+  }
+
+  // ----------------------------------------
 
   selectProfile(p: Profile) {
     try {
@@ -224,9 +292,7 @@ export class Player implements OnInit, OnDestroy {
 
   private startEndedSafetyTimer() {
     clearTimeout(this.endedSafetyTimeout);
-    // Safety check: If video doesn't end within its duration + 2s, force skip.
-    // This handles hardware decoders on old TVs that "hang" at the last frame.
-    const duration = this.videoPlayer.nativeElement.duration;
+    const duration = this.videoPlayer?.nativeElement?.duration;
     if (duration && !isNaN(duration)) {
       this.endedSafetyTimeout = setTimeout(() => {
         if (!this.videoPlayer.nativeElement.paused) {
@@ -246,7 +312,6 @@ export class Player implements OnInit, OnDestroy {
     }
   }
 
-  // Prevents the player from freezing if a video file is corrupted or missing
   onVideoError(event: any) {
     console.error("Video failed to load or play. Skipping to next to prevent freeze.", event);
     this.onVideoEnded();
@@ -273,8 +338,6 @@ export class Player implements OnInit, OnDestroy {
     }
   }
 
-
-
   interact() {
     this.unmuteAndPlay();
     if (!this.isFullscreen()) {
@@ -295,20 +358,19 @@ export class Player implements OnInit, OnDestroy {
 
     let nextIndex = this.currentVideoIndex() + 1;
 
+    // Check backend for updates when we reach the end of the playlist
     if (nextIndex >= p.videos.length) {
-      console.log('Playlist ended, checking for updates...');
+      console.log('Playlist ended, checking backend for updates...');
       this.api.getProfile(p.id).subscribe({
         next: (updatedProfile) => {
           this.profile.set(updatedProfile);
 
           if (updatedProfile.videos && updatedProfile.videos.length > 0) {
+            // Clean up the cache against the NEW list of videos
+            this.syncCacheWithBackend(updatedProfile.videos);
+
             this.currentVideoIndex.set(0);
-            if (updatedProfile.videos.length === 1) {
-              if (this.videoPlayer && this.videoPlayer.nativeElement) {
-                this.videoPlayer.nativeElement.currentTime = 0;
-                this.videoPlayer.nativeElement.play().catch((e: any) => console.error("Play failed on loop", e));
-              }
-            }
+            this.loadAndPlayVideo(0); // Load via Cache Manager
           } else {
             console.warn('Playlist became empty after update. Redirecting to selection.');
             this.backToSelection();
@@ -317,17 +379,12 @@ export class Player implements OnInit, OnDestroy {
         error: (err) => {
           console.error('Failed to auto-update playlist, looping local copy', err);
           this.currentVideoIndex.set(0);
-          // @ts-ignore
-          if (p.videos.length === 1) {
-            if (this.videoPlayer && this.videoPlayer.nativeElement) {
-              this.videoPlayer.nativeElement.currentTime = 0;
-              this.videoPlayer.nativeElement.play().catch((e: any) => console.error("Play failed on fallback loop", e));
-            }
-          }
+          this.loadAndPlayVideo(0); // Load via Cache Manager
         }
       });
     } else {
       this.currentVideoIndex.set(nextIndex);
+      this.loadAndPlayVideo(nextIndex); // Load via Cache Manager
     }
   }
 
