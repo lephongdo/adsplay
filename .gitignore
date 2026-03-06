@@ -10,6 +10,7 @@ dist/
 
 # Backend
 backend/uploads/
+backend/db.json
 
 # IDEs
 .idea/
