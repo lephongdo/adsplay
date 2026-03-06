@@ -22,7 +22,7 @@ export class Admin implements OnInit, OnDestroy {
   profiles = signal<Profile[]>([]);
   loading = signal(false);
   isUploading = signal(false);
-  uploadProgress = signal(0); // Add progress signal
+  uploadProgress = signal(0);
 
   // Modal State
   videoDeletingId = signal<string | null>(null);
@@ -64,9 +64,7 @@ export class Admin implements OnInit, OnDestroy {
 
   private statusInterval: any;
   startStatusPolling() {
-    // Initial check
     this.checkSystemStatus();
-    // Poll every 30 seconds
     this.statusInterval = setInterval(() => {
       this.checkSystemStatus();
     }, 30000);
@@ -113,7 +111,7 @@ export class Admin implements OnInit, OnDestroy {
 
   onUpload(file: File) {
     this.isUploading.set(true);
-    this.uploadProgress.set(0); // Reset progress
+    this.uploadProgress.set(0);
 
     this.api.uploadVideo(file).subscribe({
       next: (event: HttpEvent<any>) => {
@@ -123,7 +121,6 @@ export class Admin implements OnInit, OnDestroy {
             this.uploadProgress.set(percentDone);
           }
         } else if (event.type === HttpEventType.Response) {
-          // Upload complete
           this.isUploading.set(false);
           this.uploadProgress.set(0);
           this.refreshData();
@@ -133,23 +130,41 @@ export class Admin implements OnInit, OnDestroy {
         console.error('Upload failed', err);
         this.isUploading.set(false);
         this.uploadProgress.set(0);
-        // We don't necessarily clear loading here if refresh finishes it,
-        // but it's safe to turn it off if it was just blockading UI.
       }
     });
   }
 
   onDeleteVideo(id: string) {
-    // Open Confirmation Modal instead of immediate delete
+    // 🚨 EDGE CASE FIX: Check if video is actively used in any profile
+    const usedInProfiles = this.profiles().filter(p => p.videoIds && p.videoIds.includes(id));
+
+    if (usedInProfiles.length > 0) {
+      const profileNames = usedInProfiles.map(p => p.name).join(', ');
+      const proceed = confirm(`CẢNH BÁO: Video này đang được sử dụng trong các profile: [${profileNames}].\n\nXóa video này sẽ lập tức làm mất nội dung trên các màn hình đang phát profile đó. Bạn có CHẮC CHẮN muốn tiếp tục xóa?`);
+
+      if (!proceed) return; // Abort if they click cancel
+    }
+
+    // Proceed to open standard confirmation modal
     this.videoDeletingId.set(id);
   }
 
   confirmDeleteVideo() {
     const id = this.videoDeletingId();
     if (id) {
-      this.api.deleteVideo(id).subscribe(() => {
-        this.refreshData();
-        this.videoDeletingId.set(null);
+      // ⚡ OPTIMISTIC UI: Instantly remove video from the UI to prevent interactions while network processes
+      this.videos.update(current => current.filter(v => v.id !== id));
+      this.videoDeletingId.set(null); // Close modal instantly
+
+      this.api.deleteVideo(id).subscribe({
+        next: () => {
+          this.refreshData(); // Sync truth from backend
+        },
+        error: (err) => {
+          console.error('Lỗi khi xóa video', err);
+          alert('Không thể xóa video. Khôi phục lại trạng thái cũ.');
+          this.refreshData(); // Revert UI if it failed
+        }
       });
     }
   }
@@ -174,16 +189,12 @@ export class Admin implements OnInit, OnDestroy {
   private fallbackCopyTextToClipboard(text: string) {
     const textArea = document.createElement('textarea');
     textArea.value = text;
-
-    // Ensure the textarea is off-screen
     textArea.style.position = 'fixed';
     textArea.style.left = '-9999px';
     textArea.style.top = '0';
     document.body.appendChild(textArea);
-
     textArea.focus();
     textArea.select();
-
     try {
       const successful = document.execCommand('copy');
       if (successful) {
@@ -192,7 +203,6 @@ export class Admin implements OnInit, OnDestroy {
     } catch (err) {
       console.error('Fallback copy failed', err);
     }
-
     document.body.removeChild(textArea);
   }
 
