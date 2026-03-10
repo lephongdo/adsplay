@@ -10,13 +10,9 @@
     </div>
 
     <div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_12rem] sm:items-center lg:w-[28rem]">
-      <input
-        [(ngModel)]="query"
-        type="search"
-        placeholder="Tìm video..."
+      <input [(ngModel)]="query" type="search" placeholder="Tìm video..."
         class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm transition-colors focus:border-brand-primary focus:outline-none dark:border-white/10 dark:bg-black/20 dark:text-white" />
-      <select
-        [(ngModel)]="sortBy"
+      <select [(ngModel)]="sortBy"
         class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm transition-colors focus:border-brand-primary focus:outline-none dark:border-white/10 dark:bg-black/20 dark:text-white">
         <option value="newest">Mới nhất</option>
         <option value="largest">Dung lượng</option>
@@ -26,32 +22,21 @@
     </div>
   </div>
 
-  <div *ngIf="uploadError" class="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+  <div *ngIf="uploadError"
+    class="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
     {{ uploadError }}
   </div>
 
-  <input
-    type="file"
-    #fileInput
-    class="hidden"
-    (change)="onFileSelected($event)"
-    accept="video/mp4,video/webm,video/ogg,video/quicktime"
-    [disabled]="isUploading">
+  <input type="file" #fileInput class="hidden" (change)="onFileSelected($event)"
+    accept="video/mp4,video/webm,video/ogg,video/quicktime" [disabled]="isUploading">
 
   <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-    <button
-      type="button"
-      (click)="!isUploading && fileInput.click()"
-      [disabled]="isUploading"
+    <button type="button" (click)="!isUploading && fileInput.click()" [disabled]="isUploading"
       class="group relative flex aspect-video flex-col items-center justify-center gap-4 overflow-hidden rounded-2xl border-2 border-dashed shadow-sm transition-all duration-300"
-      [class.border-brand-primary]="isUploading"
-      [class.bg-brand-primary/5]="isUploading"
-      [class.border-slate-300]="!isUploading"
-      [class.dark:border-white/10]="!isUploading"
-      [class.bg-slate-50/50]="!isUploading"
-      [class.dark:bg-white/5]="!isUploading"
-      [class.hover:bg-brand-primary/5]="!isUploading"
-      [class.hover:border-brand-primary/50]="!isUploading">
+      [class.border-brand-primary]="isUploading" [class.bg-brand-primary/5]="isUploading"
+      [class.border-slate-300]="!isUploading" [class.dark:border-white/10]="!isUploading"
+      [class.bg-slate-50/50]="!isUploading" [class.dark:bg-white/5]="!isUploading"
+      [class.hover:bg-brand-primary/5]="!isUploading" [class.hover:border-brand-primary/50]="!isUploading">
       @if (isUploading) {
       <div class="absolute inset-y-0 left-0 z-0 bg-brand-primary/10 transition-all duration-300 ease-out"
         [style.width.%]="uploadProgress">
@@ -80,10 +65,8 @@
         }
 
         <div>
-          <div class="text-xs font-bold uppercase tracking-widest"
-            [class.text-brand-primary]="isUploading"
-            [class.text-slate-500]="!isUploading"
-            [class.group-hover:text-brand-primary]="!isUploading">
+          <div class="text-xs font-bold uppercase tracking-widest" [class.text-brand-primary]="isUploading"
+            [class.text-slate-500]="!isUploading" [class.group-hover:text-brand-primary]="!isUploading">
             {{ isUploading ? uploadStatusLabel : 'Tải Video Mới' }}
           </div>
           <div class="mt-1 text-xs text-slate-400">
@@ -93,17 +76,11 @@
       </div>
     </button>
 
-    <article
-      *ngFor="let video of filteredVideos"
+    <article *ngFor="let video of filteredVideos"
       class="group relative aspect-video overflow-hidden rounded-2xl border border-slate-200 bg-black shadow-sm transition-all duration-500 hover:border-brand-primary/50 hover:shadow-xl dark:border-white/10">
-      <video
-        [src]="'/api/videos/' + video.id + '/stream?v=' + video.updatedAt"
-        class="h-full w-full object-cover opacity-80 transition-opacity duration-500 group-hover:opacity-100"
-        muted
-        loop
-        playsinline
-        onmouseover="this.play()"
-        onmouseout="this.pause(); this.currentTime = 0;">
+      <video [src]="'/api/videos/' + video.id + '/stream?v=' + video.updatedAt"
+        class="h-full w-full object-cover opacity-80 transition-opacity duration-500 group-hover:opacity-100" muted loop
+        playsinline onmouseover="this.play()" onmouseout="this.pause(); this.currentTime = 0;">
       </video>
 
       <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent"></div>
@@ -124,8 +101,7 @@
               {{ video.processingError }}
             </span>
           </div>
-          <button
-            (click)="$event.stopPropagation(); delete.emit(video.id)"
+          <button (click)="$event.stopPropagation(); delete.emit(video.id)"
             class="rounded-lg bg-white/10 p-2 text-white backdrop-blur-md transition-colors hover:bg-red-500/20 hover:text-red-400"
             title="Xóa video">
             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

@@ -35,12 +35,12 @@ goto development
 echo Starting in DEVELOPMENT mode...
 cd backend
 if not exist node_modules call npm install
-start "AdPlay Backend" cmd /c "npm run dev"
+start "AdPlay Backend" cmd /k "npm run dev"
 cd ..
 
 cd frontend
 if not exist node_modules call npm install
-start "AdPlay Frontend" cmd /c "npm run start"
+start "AdPlay Frontend" cmd /k "npm run start"
 cd ..
 goto finish_dev
 
@@ -69,7 +69,7 @@ if %errorlevel% neq 0 (
     pause
     exit /b 1
 )
-start "AdPlay Server" cmd /c "npm run start:prod"
+start "AdPlay Server" cmd /k "npm run start:prod"
 cd ..
 goto finish_prod
 

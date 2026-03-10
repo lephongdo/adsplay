@@ -7,7 +7,8 @@
     }
 
     @if (session.statusMessage()) {
-    <div class="absolute top-4 left-4 z-[80] max-w-sm rounded-2xl border border-white/10 bg-black/50 px-4 py-3 text-xs font-medium text-slate-200 backdrop-blur-xl">
+    <div
+        class="absolute top-4 left-4 z-[80] max-w-sm rounded-2xl border border-white/10 bg-black/50 px-4 py-3 text-xs font-medium text-slate-200 backdrop-blur-xl">
         {{ session.statusMessage() }}
     </div>
     }
@@ -87,9 +88,9 @@
     <div class="w-full h-full bg-black relative group/player flex items-center justify-center overflow-hidden">
         <video #videoPlayer [src]="session.localVideoUrl()"
             class="relative z-10 max-w-full max-h-full w-full h-full object-contain shadow-2xl transition-all duration-700"
-            [class.scale-95]="session.isVideoPortrait() && !session.isFullscreen()" playsinline webkit-playsinline x5-playsinline
-            (ended)="session.onVideoEnded()" (error)="session.onVideoError()" (loadedmetadata)="session.onMetadataLoaded($event)"
-            (click)="session.toggleFullscreen()">
+            [class.scale-95]="session.isVideoPortrait() && !session.isFullscreen()" playsinline webkit-playsinline
+            x5-playsinline (ended)="session.onVideoEnded()" (error)="session.onVideoError()"
+            (loadedmetadata)="session.onMetadataLoaded($event)" (click)="session.toggleFullscreen()">
         </video>
     </div>
 
@@ -113,7 +114,8 @@
     }
 
     @if (session.showUnmuteOverlay()) {
-    <div class="absolute bottom-6 left-1/2 z-[80] -translate-x-1/2 rounded-full bg-black/70 px-4 py-2 text-xs font-bold uppercase tracking-[0.2em] text-white backdrop-blur-xl">
+    <div
+        class="absolute bottom-6 left-1/2 z-[80] -translate-x-1/2 rounded-full bg-black/70 px-4 py-2 text-xs font-bold uppercase tracking-[0.2em] text-white backdrop-blur-xl">
         Chạm để bật tiếng
     </div>
     }
