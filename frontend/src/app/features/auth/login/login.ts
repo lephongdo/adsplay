@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../../services/auth.service';
+import { getErrorMessage } from '../../../shared/utils/error-message';
 
 @Component({
   selector: 'app-login',
@@ -139,8 +140,7 @@ export class Login {
         this.router.navigate(['/admin']);
       },
       error: (err) => {
-        console.error('Login failed', err);
-        this.error = 'Tài khoản hoặc mật khẩu không chính xác';
+        this.error = getErrorMessage(err, 'Tai khoan hoac mat khau khong chinh xac');
         this.loading = false;
       }
     });

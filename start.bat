@@ -62,7 +62,14 @@ cd ..
 echo Step 2: Starting Server...
 cd backend
 if not exist node_modules call npm install
-start "AdPlay Server" cmd /c "npm run dev"
+call npm run build
+if %errorlevel% neq 0 (
+    echo.
+    echo ERROR: Backend build failed!
+    pause
+    exit /b 1
+)
+start "AdPlay Server" cmd /c "npm run start:prod"
 cd ..
 goto finish_prod
 

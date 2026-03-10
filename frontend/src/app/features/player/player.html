@@ -1,12 +1,18 @@
 <div #container class="fixed inset-0 bg-black flex items-center justify-center z-50 overflow-hidden font-sans"
-    [class.cursor-none]="isCursorHidden()">
-    @if (!profile()) {
+    [class.cursor-none]="session.isCursorHidden()">
+    @if (!session.profile()) {
     <div
         class="absolute top-0 left-1/2 -translate-x-1/2 w-[50rem] h-[50rem] bg-brand-primary opacity-10 rounded-full pointer-events-none">
     </div>
     }
 
-    @if (loading()) {
+    @if (session.statusMessage()) {
+    <div class="absolute top-4 left-4 z-[80] max-w-sm rounded-2xl border border-white/10 bg-black/50 px-4 py-3 text-xs font-medium text-slate-200 backdrop-blur-xl">
+        {{ session.statusMessage() }}
+    </div>
+    }
+
+    @if (session.loading()) {
     <div class="flex flex-col items-center space-y-8 animate-fade-in relative z-10">
         <div class="relative w-24 h-24">
             <div class="absolute inset-0 border-4 border-white/10 rounded-full"></div>
@@ -19,7 +25,7 @@
     </div>
     }
 
-    @else if (!profile()) {
+    @else if (!session.profile()) {
     <div
         class="w-full max-w-6xl px-4 flex flex-col items-center max-h-screen overflow-y-auto py-12 relative z-10 animate-fade-in">
 
@@ -38,8 +44,8 @@
         </h1>
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 w-full">
-            @for (p of allProfiles(); track p.id) {
-            <button (click)="selectProfile(p)"
+            @for (p of session.allProfiles(); track p.id) {
+            <button (click)="session.selectProfile(p)"
                 class="p-8 rounded-3xl text-center group relative overflow-hidden hover:scale-105 transition-all duration-300 border border-white/10 hover:border-brand-primary/50 bg-white/5 hover:bg-white/10 shadow-2xl">
                 <div
                     class="absolute inset-0 bg-gradient-to-br from-brand-primary/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500">
@@ -55,7 +61,7 @@
                 </div>
             </button>
             }
-            @if (allProfiles().length === 0) {
+            @if (session.allProfiles().length === 0) {
             <div class="col-span-full text-center py-20 border border-dashed border-white/10 rounded-3xl bg-white/5">
                 <p class="text-gray-400 text-xl font-light">Chưa có màn hình nào được tạo.</p>
                 <a href="/admin"
@@ -69,26 +75,26 @@
     }
 
     @else {
-    @if (!profile()?.videos || profile()?.videos?.length === 0) {
+    @if (!session.profile()?.videos || session.profile()?.videos?.length === 0) {
     <div class="flex flex-col items-center space-y-6 animate-fade-in relative z-10">
         <div class="text-white text-3xl font-bold tracking-tight">Màn hình chưa có nội dung</div>
-        <button (click)="backToSelection()"
+        <button (click)="session.backToSelection()"
             class="px-8 py-3 rounded-full border border-white/20 text-white hover:bg-white/10 transition-colors uppercase tracking-widest text-sm font-bold">
             Quay Lại
         </button>
     </div>
     } @else {
     <div class="w-full h-full bg-black relative group/player flex items-center justify-center overflow-hidden">
-        <video #videoPlayer [src]="localVideoUrl()"
+        <video #videoPlayer [src]="session.localVideoUrl()"
             class="relative z-10 max-w-full max-h-full w-full h-full object-contain shadow-2xl transition-all duration-700"
-            [class.scale-95]="isVideoPortrait() && !isFullscreen()" playsinline webkit-playsinline x5-playsinline
-            (ended)="onVideoEnded()" (error)="onVideoError($event)" (loadedmetadata)="onMetadataLoaded($event)"
-            (click)="toggleFullscreen()">
+            [class.scale-95]="session.isVideoPortrait() && !session.isFullscreen()" playsinline webkit-playsinline x5-playsinline
+            (ended)="session.onVideoEnded()" (error)="session.onVideoError()" (loadedmetadata)="session.onMetadataLoaded($event)"
+            (click)="session.toggleFullscreen()">
         </video>
     </div>
 
-    @if (profile() && !isFullscreen()) {
-    <div (click)="interact()"
+    @if (session.profile() && !session.isFullscreen()) {
+    <div (click)="session.interact()"
         class="absolute inset-0 z-[70] bg-black/60 flex flex-col items-center justify-center cursor-pointer animate-fade-in group/overlay">
         <div
             class="w-20 h-20 rounded-full bg-white/10 border border-white/30 flex items-center justify-center mb-6 group-hover/overlay:scale-110 group-hover/overlay:bg-brand-primary group-hover/overlay:border-brand-primary transition-all duration-300 shadow-[0_0_30px_rgba(255,255,255,0.1)]">
@@ -103,6 +109,12 @@
         <p class="text-slate-300 mt-2 text-xs font-medium tracking-wide opacity-80">
             Chế độ hiển thị toàn màn hình
         </p>
+    </div>
+    }
+
+    @if (session.showUnmuteOverlay()) {
+    <div class="absolute bottom-6 left-1/2 z-[80] -translate-x-1/2 rounded-full bg-black/70 px-4 py-2 text-xs font-bold uppercase tracking-[0.2em] text-white backdrop-blur-xl">
+        Cham de bat tieng
     </div>
     }
 

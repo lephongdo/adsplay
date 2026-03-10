@@ -1,10 +1,10 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Button } from '../../../../shared/ui/button/button';
-import { Video, Profile, ApiService } from '../../../../services/api.service';
 import { ConfirmModal } from '../../../../shared/ui/confirm-modal/confirm-modal';
+import { Profile, Video } from '../../../../services/api.service';
 import { slugify } from '../../../../shared/utils/slugify';
+import { SaveProfilePayload } from '../../dashboard.store';
 
 @Component({
   selector: 'app-profile-manager',
@@ -15,43 +15,42 @@ import { slugify } from '../../../../shared/utils/slugify';
 export class ProfileManager {
   @Input() profiles: Profile[] = [];
   @Input() videos: Video[] = [];
+  @Input() activePlayerCount = 0;
+
+  @Output() saveProfile = new EventEmitter<SaveProfilePayload>();
+  @Output() deleteProfileConfirmed = new EventEmitter<string>();
 
   isEditing = false;
   editingId: string | null = null;
   profileName = '';
   mobileTab: 'library' | 'playlist' = 'library';
-
-  videoDeletingId = null;
   deletingProfileId: string | null = null;
-
   playlistVideos: Video[] = [];
-
   draggedIndex: number | null = null;
   draggedVideo: Video | null = null;
   isDragOverPlaylist = false;
-
-  constructor(private api: ApiService) { }
+  formError = '';
 
   openCreate() {
     this.isEditing = true;
     this.editingId = null;
     this.profileName = '';
     this.playlistVideos = [];
+    this.formError = '';
   }
 
   openEdit(profile: Profile) {
     this.isEditing = true;
     this.editingId = profile.id;
     this.profileName = profile.name;
-
+    this.formError = '';
     this.playlistVideos = profile.videoIds
-      .map(id => this.videos.find(v => v.id === id))
-      .filter((v): v is Video => !!v);
+      .map((id) => this.videos.find((video) => video.id === id))
+      .filter((video): video is Video => Boolean(video));
   }
 
-  @Output() refresh = new EventEmitter<void>();
-
   addToPlaylist(video: Video) {
+    this.formError = '';
     this.playlistVideos.push(video);
   }
 
@@ -69,20 +68,20 @@ export class ProfileManager {
   }
 
   onDragStart(event: DragEvent, index: number) {
-    this.draggedIndex = index;
     this.draggedVideo = null;
+    this.draggedIndex = index;
     if (event.dataTransfer) {
       event.dataTransfer.effectAllowed = 'move';
       event.dataTransfer.setData('text/plain', index.toString());
     }
   }
 
-  onDragOver(event: DragEvent, index?: number) {
+  onDragOver(event: DragEvent) {
     event.preventDefault();
+    this.isDragOverPlaylist = true;
     if (event.dataTransfer) {
       event.dataTransfer.dropEffect = this.draggedVideo ? 'copy' : 'move';
     }
-    this.isDragOverPlaylist = true;
   }
 
   onDragLeave() {
@@ -94,63 +93,54 @@ export class ProfileManager {
     this.isDragOverPlaylist = false;
 
     if (this.draggedVideo) {
-      const targetIndex = index !== undefined ? index : this.playlistVideos.length;
-      this.playlistVideos.splice(targetIndex, 0, this.draggedVideo);
+      this.playlistVideos.splice(index ?? this.playlistVideos.length, 0, this.draggedVideo);
       this.draggedVideo = null;
+      return;
     }
-    else if (this.draggedIndex !== null) {
-      const targetIndex = index !== undefined ? index : this.playlistVideos.length - 1;
-      const movedItem = this.playlistVideos[this.draggedIndex];
-      this.playlistVideos.splice(this.draggedIndex, 1);
-      this.playlistVideos.splice(targetIndex, 0, movedItem);
-      this.draggedIndex = null;
+
+    if (this.draggedIndex === null) {
+      return;
     }
+
+    const movedItem = this.playlistVideos[this.draggedIndex];
+    this.playlistVideos.splice(this.draggedIndex, 1);
+    this.playlistVideos.splice(index ?? this.playlistVideos.length, 0, movedItem);
+    this.draggedIndex = null;
   }
 
   save() {
     const name = this.profileName.trim();
     if (!name) {
-      alert('Vui lòng nhập tên cho Profile.');
+      this.formError = 'Nhap ten cho man hinh.';
       return;
     }
 
-    // 🚨 EDGE CASE FIX: Prevent saving empty profiles causing black screens on TVs
-    if (this.playlistVideos.length === 0) {
-      alert('Không thể lưu! Vui lòng thêm ít nhất 1 video vào playlist.');
+    if (!this.playlistVideos.length) {
+      this.formError = 'Them it nhat mot video truoc khi luu.';
       return;
     }
 
-    // 🚨 EDGE CASE FIX: Prevent Duplicate Names / Slug Collision
-    const slugifiedNewName = slugify(name);
-    const isDuplicate = this.profiles.some(p =>
-      p.id !== this.editingId && slugify(p.name) === slugifiedNewName
+    const nextSlug = slugify(name);
+    const duplicate = this.profiles.some(
+      (profile) => profile.id !== this.editingId && slugify(profile.name) === nextSlug,
     );
-
-    if (isDuplicate) {
-      alert('Tên profile này đã tồn tại hoặc tạo ra đường dẫn trùng lặp. Vui lòng chọn một tên khác.');
+    if (duplicate) {
+      this.formError = 'Ten man hinh nay da ton tai hoac tao slug trung lap.';
       return;
     }
 
-    const videoIds = this.playlistVideos.map(v => v.id);
-
-    const obs = this.editingId
-      ? this.api.updateProfile(this.editingId, name, videoIds)
-      : this.api.createProfile(name, videoIds);
-
-    obs.subscribe({
-      next: () => {
-        this.isEditing = false;
-        this.refresh.emit(); // Tell admin dashboard to fetch updated lists
-      },
-      error: (err) => {
-        console.error('Lỗi khi lưu profile', err);
-        alert('Đã xảy ra lỗi hệ thống khi lưu profile.');
-      }
+    this.saveProfile.emit({
+      id: this.editingId || undefined,
+      name,
+      videoIds: this.playlistVideos.map((video) => video.id),
     });
+    this.isEditing = false;
+    this.formError = '';
   }
 
   cancel() {
     this.isEditing = false;
+    this.formError = '';
   }
 
   deleteProfile(id: string) {
@@ -158,37 +148,31 @@ export class ProfileManager {
   }
 
   confirmDelete() {
-    if (this.deletingProfileId) {
-      const targetId = this.deletingProfileId;
-
-      // ⚡ OPTIMISTIC UI: Remove it instantly so it disappears without waiting for backend
-      this.profiles = this.profiles.filter(p => p.id !== targetId);
-      this.deletingProfileId = null; // Close modal instantly
-
-      this.api.deleteProfile(targetId).subscribe({
-        next: () => {
-          this.refresh.emit(); // Sync to make sure UI and backend match
-        },
-        error: (err) => {
-          console.error('Lỗi xóa profile', err);
-          alert('Không thể xóa profile. Khôi phục trạng thái cũ.');
-          this.refresh.emit(); // Revert UI if network failed
-        }
-      });
+    if (!this.deletingProfileId) {
+      return;
     }
+
+    this.deleteProfileConfirmed.emit(this.deletingProfileId);
+    this.deletingProfileId = null;
   }
 
   cancelDelete() {
     this.deletingProfileId = null;
   }
 
-  getPlayerUrl(name: string): string {
+  getPlayerUrl(name: string) {
     return `${window.location.origin}/player/${slugify(name)}`;
   }
 
-  isOnline(lastSeen?: string): boolean {
-    if (!lastSeen) return false;
-    const diff = Date.now() - new Date(lastSeen).getTime();
-    return diff < 60000;
+  getPlaylistDurationLabel() {
+    return `${this.playlistVideos.length} muc trong playlist`;
+  }
+
+  isOnline(lastSeen?: string) {
+    if (!lastSeen) {
+      return false;
+    }
+
+    return Date.now() - new Date(lastSeen).getTime() < 60000;
   }
 }

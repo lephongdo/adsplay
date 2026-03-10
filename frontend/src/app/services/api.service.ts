@@ -1,21 +1,59 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpEvent } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
 export interface Video {
+    createdAt: string;
+    durationSeconds?: number;
     id: string;
     filename: string;
+    height?: number;
+    mimeType?: string;
     originalName: string;
+    processingError?: string;
+    processingStatus: 'pending' | 'processing' | 'ready';
+    sourceFilename: string;
+    sourceMimeType?: string;
+    sourceSize: number;
     size: number;
+    streamVariant: 'optimized' | 'original';
+    updatedAt: string;
     uploadedAt: string;
+    usageCount?: number;
+    width?: number;
 }
 
 export interface Profile {
+    createdAt: string;
     id: string;
+    slug?: string;
     name: string;
+    updatedAt: string;
     videoIds: string[];
     videos?: Video[]; // enriched
     lastSeen?: string;
+}
+
+export interface VideoPolicy {
+    allowedMimeTypes: string[];
+    mediaProcessingEnabled: boolean;
+    maxUploadSizeBytes: number;
+    resumableChunkSizeBytes: number;
+}
+
+export interface UploadSession {
+    chunkSizeBytes: number;
+    createdAt: string;
+    fileKey: string;
+    id: string;
+    mimeType: string;
+    originalName: string;
+    status: 'uploading' | 'assembling' | 'completed';
+    totalChunks: number;
+    totalSizeBytes: number;
+    updatedAt: string;
+    uploadedChunkIndexes: number[];
+    videoId?: string;
 }
 
 @Injectable({
@@ -30,13 +68,52 @@ export class ApiService {
         return this.http.get<Video[]>(`${this.apiUrl}/videos`);
     }
 
-    uploadVideo(file: File): Observable<import('@angular/common/http').HttpEvent<Video>> {
+    getVideoPolicy(): Observable<VideoPolicy> {
+        return this.http.get<VideoPolicy>(`${this.apiUrl}/videos/policy`);
+    }
+
+    uploadVideo(file: File): Observable<HttpEvent<Video>> {
         const formData = new FormData();
         formData.append('video', file);
         return this.http.post<Video>(`${this.apiUrl}/videos`, formData, {
             reportProgress: true,
             observe: 'events'
         });
+    }
+
+    createUploadSession(payload: {
+        fileKey: string;
+        mimeType: string;
+        originalName: string;
+        totalSizeBytes: number;
+    }): Observable<UploadSession> {
+        return this.http.post<UploadSession>(`${this.apiUrl}/videos/uploads/sessions`, payload);
+    }
+
+    getUploadSession(id: string): Observable<UploadSession> {
+        return this.http.get<UploadSession>(`${this.apiUrl}/videos/uploads/sessions/${id}`);
+    }
+
+    uploadChunk(sessionId: string, chunkIndex: number, chunk: Blob): Observable<HttpEvent<{ sessionId: string; uploadedChunkIndexes: number[] }>> {
+        return this.http.put<{ sessionId: string; uploadedChunkIndexes: number[] }>(
+            `${this.apiUrl}/videos/uploads/sessions/${sessionId}/chunks/${chunkIndex}`,
+            chunk,
+            {
+                headers: {
+                    'Content-Type': 'application/octet-stream',
+                },
+                observe: 'events',
+                reportProgress: true,
+            },
+        );
+    }
+
+    completeUploadSession(id: string): Observable<Video> {
+        return this.http.post<Video>(`${this.apiUrl}/videos/uploads/sessions/${id}/complete`, {});
+    }
+
+    cancelUploadSession(id: string): Observable<{ success: boolean }> {
+        return this.http.delete<{ success: boolean }>(`${this.apiUrl}/videos/uploads/sessions/${id}`);
     }
 
     deleteVideo(id: string): Observable<any> {
@@ -49,6 +126,10 @@ export class ApiService {
 
     getProfile(id: string): Observable<Profile> {
         return this.http.get<Profile>(`${this.apiUrl}/profiles/${id}`);
+    }
+
+    getProfileBySlug(slug: string): Observable<Profile> {
+        return this.http.get<Profile>(`${this.apiUrl}/profiles/slug/${slug}`);
     }
 
     createProfile(name: string, videoIds: string[]): Observable<any> {
@@ -69,5 +150,9 @@ export class ApiService {
 
     sendHeartbeat(profileId: string): Observable<any> {
         return this.http.post(`${this.apiUrl}/profiles/${profileId}/heartbeat`, {});
+    }
+
+    getVideoStreamUrl(video: Pick<Video, 'id' | 'updatedAt'>): string {
+        return `${this.apiUrl}/videos/${video.id}/stream?v=${encodeURIComponent(video.updatedAt)}`;
     }
 }

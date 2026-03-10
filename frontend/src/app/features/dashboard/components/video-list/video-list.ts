@@ -1,53 +1,100 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Button } from '../../../../shared/ui/button/button';
+import { FormsModule } from '@angular/forms';
 import { Video } from '../../../../services/api.service';
 
 @Component({
   selector: 'app-video-list',
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './video-list.html',
   styleUrl: './video-list.css',
 })
 export class VideoList {
   @Input() videos: Video[] = [];
-  @Input() isUploading: boolean = false;
-  @Input() uploadProgress: number = 0;
+  @Input() isUploading = false;
+  @Input() uploadProgress = 0;
+  @Input() maxUploadSizeBytes = 2 * 1024 * 1024 * 1024;
+  @Input() uploadStatusLabel = 'San sang tai len';
   @Output() upload = new EventEmitter<File>();
   @Output() delete = new EventEmitter<string>();
 
-  // UI Error state
   uploadError: string | null = null;
+  query = '';
+  sortBy: 'largest' | 'most-used' | 'name' | 'newest' = 'newest';
 
-  // Match backend limits
-  private readonly MAX_FILE_SIZE = 500 * 1024 * 1024; // 500 MB
   private readonly ALLOWED_TYPES = ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime'];
 
-  onFileSelected(event: any) {
-    this.uploadError = null; // Reset previous errors
-    const file = event.target.files[0];
-
-    if (file) {
-      // 1. Validate File Type
-      if (!this.ALLOWED_TYPES.includes(file.type)) {
-        this.uploadError = `Định dạng không hỗ trợ (${file.type || 'Unknown'}). Vui lòng chọn MP4, WebM, OGG hoặc MOV.`;
-        event.target.value = ''; // Reset input
-        return;
+  get filteredVideos() {
+    const query = this.query.trim().toLowerCase();
+    const items = this.videos.filter((video) => {
+      if (!query) {
+        return true;
       }
 
-      // 2. Validate File Size
-      if (file.size > this.MAX_FILE_SIZE) {
-        const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
-        this.uploadError = `File quá lớn (${sizeInMB} MB). Giới hạn tối đa là 500 MB.`;
-        event.target.value = ''; // Reset input
-        return;
+      return (
+        video.originalName.toLowerCase().includes(query) ||
+        video.filename.toLowerCase().includes(query)
+      );
+    });
+
+    return items.sort((left, right) => {
+      switch (this.sortBy) {
+        case 'largest':
+          return right.size - left.size;
+        case 'most-used':
+          return (right.usageCount || 0) - (left.usageCount || 0);
+        case 'name':
+          return left.originalName.localeCompare(right.originalName);
+        case 'newest':
+        default:
+          return new Date(right.uploadedAt).getTime() - new Date(left.uploadedAt).getTime();
       }
+    });
+  }
 
-      // If validations pass, emit the file to the parent component for uploading
-      this.upload.emit(file);
+  onFileSelected(event: Event) {
+    this.uploadError = null;
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
 
-      // Reset input so the same file can be selected again if needed
-      event.target.value = '';
+    if (!file) {
+      return;
     }
+
+    if (!this.ALLOWED_TYPES.includes(file.type)) {
+      this.uploadError = `Dinh dang khong ho tro (${file.type || 'unknown'}). Chon MP4, WebM, OGG hoac MOV.`;
+      input.value = '';
+      return;
+    }
+
+    if (file.size > this.maxUploadSizeBytes) {
+      const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
+      this.uploadError = `File qua lon (${sizeInMB} MB). Gioi han hien tai la ${this.getMaxUploadSizeLabel()}.`;
+      input.value = '';
+      return;
+    }
+
+    this.upload.emit(file);
+    input.value = '';
+  }
+
+  formatUploadedAt(value: string) {
+    return new Date(value).toLocaleString();
+  }
+
+  getProcessingLabel(video: Video) {
+    if (video.processingStatus === 'processing') {
+      return 'Dang toi uu';
+    }
+
+    if (video.processingStatus === 'pending') {
+      return 'Dang xep hang';
+    }
+
+    return video.streamVariant === 'optimized' ? 'San sang HD' : 'San sang ban goc';
+  }
+
+  getMaxUploadSizeLabel() {
+    return `${(this.maxUploadSizeBytes / 1024 / 1024 / 1024).toFixed(1)} GB`;
   }
 }

@@ -113,7 +113,7 @@
 
         <!-- Dynamic Content Area -->
         <div class="relative flex-1 px-6 pb-6 overflow-y-auto min-h-0">
-            @if (loading()) {
+            @if (store.loading()) {
             <div class="flex flex-col items-center justify-center py-20 animate-fade-in">
                 <div class="w-12 h-12 border-4 border-brand-primary border-t-transparent rounded-full animate-spin">
                 </div>
@@ -128,18 +128,18 @@
                     <div>
                         <h3 class="font-bold text-slate-700 dark:text-slate-200">Trạng Thái Hệ Thống</h3>
                         <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                            @if (systemInfo()) {
-                            IP: {{ systemInfo()?.localIps?.[0] || 'Unknown' }}
+                            @if (store.systemInfo()) {
+                            IP: {{ store.systemInfo()?.localIps?.[0] || 'Unknown' }}
                             } @else {
                             Đang kiểm tra...
                             }
                         </p>
                     </div>
                     <div class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-2"
-                        [class.bg-emerald-100]="isSystemOnline()" [class.text-emerald-700]="isSystemOnline()"
-                        [class.bg-red-100]="!isSystemOnline()" [class.text-red-700]="!isSystemOnline()">
+                        [class.bg-emerald-100]="store.isSystemOnline()" [class.text-emerald-700]="store.isSystemOnline()"
+                        [class.bg-red-100]="!store.isSystemOnline()" [class.text-red-700]="!store.isSystemOnline()">
                         <span class="w-2 h-2 rounded-full bg-current animate-pulse"></span>
-                        {{ isSystemOnline() ? 'Online' : 'Offline' }}
+                        {{ store.isSystemOnline() ? 'Online' : 'Offline' }}
                     </div>
                 </div>
 
@@ -162,13 +162,18 @@
             </div>
 
             <div *ngIf="activeTab === 'videos'" class="animate-fade-in h-full pb-20">
-                <app-video-list [videos]="videos()" [isUploading]="isUploading()" [uploadProgress]="uploadProgress()"
-                    (upload)="onUpload($event)" (delete)="onDeleteVideo($event)">
+                <app-video-list [videos]="store.videos()" [isUploading]="store.isUploading()"
+                    [uploadProgress]="store.uploadProgress()" [maxUploadSizeBytes]="store.maxUploadSizeBytes()"
+                    [uploadStatusLabel]="store.uploadStatusLabel()"
+                    (upload)="onUpload($event)"
+                    (delete)="requestDeleteVideo($event)">
                 </app-video-list>
             </div>
 
             <div *ngIf="activeTab === 'profiles'" class="h-full pb-20">
-                <app-profile-manager [profiles]="profiles()" [videos]="videos()" (refresh)="refreshData()">
+                <app-profile-manager [profiles]="store.profiles()" [videos]="store.videos()"
+                    [activePlayerCount]="store.activePlayerCount()" (saveProfile)="onSaveProfile($event)"
+                    (deleteProfileConfirmed)="onDeleteProfile($event)">
                 </app-profile-manager>
             </div>
             }
@@ -176,7 +181,7 @@
     </main>
     <!-- Confirm Delete Video Modal -->
     <app-confirm-modal [isOpen]="!!videoDeletingId()" title="Xóa Video?"
-        message="Hành động này không thể hoàn tác. Video sẽ bị xóa vĩnh viễn khỏi hệ thống." confirmText="Xóa Video"
+        [message]="getDeleteVideoMessage()" confirmText="Xóa Video"
         (confirm)="confirmDeleteVideo()" (cancel)="cancelDeleteVideo()">
     </app-confirm-modal>
 </div>

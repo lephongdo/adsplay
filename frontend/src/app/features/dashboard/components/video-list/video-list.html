@@ -1,114 +1,145 @@
 <div class="space-y-6">
-    <div class="flex justify-between items-center">
-        <h3 class="text-lg font-bold text-slate-900 dark:text-white uppercase tracking-wider text-glow">
-            Danh Sách Video ({{ videos.length }})
-        </h3>
+  <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div>
+      <h3 class="text-lg font-bold uppercase tracking-wider text-slate-900 dark:text-white text-glow">
+        Danh Sach Video ({{ videos.length }})
+      </h3>
+      <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+        Tim nhanh theo ten file, sap xep theo ngay tai, dung luong hoac so playlist dang su dung.
+      </p>
     </div>
 
-    <!-- Hidden File Input -->
-    <input type="file" #fileInput class="hidden" (change)="onFileSelected($event)" accept="video/mp4,video/webm"
-        [disabled]="isUploading">
+    <div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_12rem] sm:items-center lg:w-[28rem]">
+      <input
+        [(ngModel)]="query"
+        type="search"
+        placeholder="Tim video..."
+        class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm transition-colors focus:border-brand-primary focus:outline-none dark:border-white/10 dark:bg-black/20 dark:text-white" />
+      <select
+        [(ngModel)]="sortBy"
+        class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm transition-colors focus:border-brand-primary focus:outline-none dark:border-white/10 dark:bg-black/20 dark:text-white">
+        <option value="newest">Moi nhat</option>
+        <option value="largest">Dung luong</option>
+        <option value="most-used">Nhieu playlist</option>
+        <option value="name">Ten file</option>
+      </select>
+    </div>
+  </div>
 
-    <!-- Grid Layout -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+  <div *ngIf="uploadError" class="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+    {{ uploadError }}
+  </div>
 
-        <!-- Upload Card (Always First) -->
-        <button (click)="!isUploading && fileInput.click()" [disabled]="isUploading"
-            class="group relative aspect-video flex flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed transition-all duration-300 overflow-hidden shadow-sm"
-            [class.border-brand-primary]="isUploading" [class.bg-brand-primary/5]="isUploading"
-            [class.border-slate-300]="!isUploading" [class.dark:border-white/10]="!isUploading"
-            [class.bg-slate-50/50]="!isUploading" [class.dark:bg-white/5]="!isUploading"
-            [class.hover:bg-brand-primary/5]="!isUploading" [class.hover:border-brand-primary/50]="!isUploading"
-            [class.cursor-pointer]="!isUploading" [class.cursor-wait]="isUploading">
+  <input
+    type="file"
+    #fileInput
+    class="hidden"
+    (change)="onFileSelected($event)"
+    accept="video/mp4,video/webm,video/ogg,video/quicktime"
+    [disabled]="isUploading">
 
-            <!-- Progress Fill Background -->
-            @if (isUploading) {
-            <div class="absolute inset-y-0 left-0 bg-brand-primary/10 transition-all duration-300 ease-out z-0"
-                [style.width.%]="uploadProgress">
-            </div>
-            }
+  <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <button
+      type="button"
+      (click)="!isUploading && fileInput.click()"
+      [disabled]="isUploading"
+      class="group relative flex aspect-video flex-col items-center justify-center gap-4 overflow-hidden rounded-2xl border-2 border-dashed shadow-sm transition-all duration-300"
+      [class.border-brand-primary]="isUploading"
+      [class.bg-brand-primary/5]="isUploading"
+      [class.border-slate-300]="!isUploading"
+      [class.dark:border-white/10]="!isUploading"
+      [class.bg-slate-50/50]="!isUploading"
+      [class.dark:bg-white/5]="!isUploading"
+      [class.hover:bg-brand-primary/5]="!isUploading"
+      [class.hover:border-brand-primary/50]="!isUploading">
+      @if (isUploading) {
+      <div class="absolute inset-y-0 left-0 z-0 bg-brand-primary/10 transition-all duration-300 ease-out"
+        [style.width.%]="uploadProgress">
+      </div>
+      }
 
-            <div class="relative z-10 flex flex-col items-center gap-3 w-full px-6">
-                <!-- Icon or Progress Ring -->
-                @if (isUploading) {
-                <div class="relative w-16 h-16 flex items-center justify-center">
-                    <svg class="w-full h-full transform -rotate-90 text-brand-primary/20 backdrop-blur-sm"
-                        viewBox="0 0 36 36">
-                        <path class="stroke-current" stroke-width="3" fill="none"
-                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                        <path class="stroke-brand-primary transition-all duration-300 ease-out"
-                            stroke-dasharray="100, 100" [attr.stroke-dashoffset]="100 - uploadProgress" stroke-width="3"
-                            fill="none"
-                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                    </svg>
-                    <span class="absolute text-brand-primary font-bold text-sm">{{ uploadProgress }}%</span>
-                </div>
-                } @else {
-                <div
-                    class="w-16 h-16 rounded-full bg-slate-200 dark:bg-white/10 text-slate-400 flex items-center justify-center group-hover:scale-110 group-hover:bg-brand-primary group-hover:text-white transition-all duration-300 shadow-sm">
-                    <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                    </svg>
-                </div>
-                }
-
-                <span class="font-bold uppercase tracking-widest text-xs transition-colors"
-                    [class.text-brand-primary]="isUploading" [class.text-slate-400]="!isUploading"
-                    [class.group-hover:text-brand-primary]="!isUploading">
-                    {{ isUploading ? 'Đang Tải Lên...' : 'Tải Video Mới' }}
-                </span>
-            </div>
-        </button>
-
-        <!-- Video Cards -->
-        <div *ngFor="let video of videos"
-            class="group relative aspect-video rounded-xl overflow-hidden bg-black border border-slate-200 dark:border-white/10 shadow-sm hover:shadow-xl hover:border-brand-primary/50 transition-all duration-500">
-
-            <!-- Video Thumbnail / Preview -->
-            <video [src]="'/uploads/' + video.filename"
-                class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity duration-500"
-                muted loop playsinline onmouseover="this.play()" onmouseout="this.pause(); this.currentTime = 0;">
-            </video>
-
-            <!-- Gradient Overlay -->
-            <div
-                class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-60 group-hover:opacity-40 transition-opacity duration-300">
-            </div>
-
-            <!-- Content Info (Bottom) -->
-            <div
-                class="absolute bottom-0 left-0 right-0 p-4 translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
-                <h4 class="text-white font-bold truncate text-sm shadow-black drop-shadow-md relative z-10"
-                    [title]="video.originalName">
-                    {{ video.originalName }}
-                </h4>
-                <div
-                    class="flex items-center justify-between mt-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-75">
-                    <span class="text-[10px] font-mono text-slate-300 bg-black/50 px-2 py-0.5 rounded">
-                        {{ (video.size / 1024 / 1024) | number:'1.1-2' }} MB
-                    </span>
-
-                    <!-- Delete Action -->
-                    <button (click)="$event.stopPropagation(); delete.emit(video.id)"
-                        class="p-1.5 rounded-lg bg-white/10 hover:bg-red-500/20 text-white hover:text-red-400 backdrop-blur-md transition-colors"
-                        title="Xóa Video">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Play Icon Overlay (Centers when not hovering) -->
-            <div
-                class="absolute inset-0 flex items-center justify-center pointer-events-none group-hover:opacity-0 transition-opacity duration-300">
-                <div class="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                    <svg class="w-6 h-6 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M8 5v14l11-7z" />
-                    </svg>
-                </div>
-            </div>
+      <div class="relative z-10 flex flex-col items-center gap-3 px-6 text-center">
+        @if (isUploading) {
+        <div class="relative flex h-16 w-16 items-center justify-center">
+          <svg class="h-full w-full -rotate-90 transform text-brand-primary/20" viewBox="0 0 36 36">
+            <path class="stroke-current" stroke-width="3" fill="none"
+              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            <path class="stroke-brand-primary transition-all duration-300 ease-out" stroke-width="3" fill="none"
+              stroke-dasharray="100, 100" [attr.stroke-dashoffset]="100 - uploadProgress"
+              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+          </svg>
+          <span class="absolute text-sm font-bold text-brand-primary">{{ uploadProgress }}%</span>
         </div>
-    </div>
+        } @else {
+        <div
+          class="flex h-16 w-16 items-center justify-center rounded-full bg-slate-200 text-slate-400 shadow-sm transition-all duration-300 group-hover:scale-110 group-hover:bg-brand-primary group-hover:text-white dark:bg-white/10">
+          <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+        </div>
+        }
+
+        <div>
+          <div class="text-xs font-bold uppercase tracking-widest"
+            [class.text-brand-primary]="isUploading"
+            [class.text-slate-500]="!isUploading"
+            [class.group-hover:text-brand-primary]="!isUploading">
+            {{ isUploading ? uploadStatusLabel : 'Tai Video Moi' }}
+          </div>
+          <div class="mt-1 text-xs text-slate-400">
+            MP4, WebM, OGG, MOV. Toi da {{ getMaxUploadSizeLabel() }}.
+          </div>
+        </div>
+      </div>
+    </button>
+
+    <article
+      *ngFor="let video of filteredVideos"
+      class="group relative aspect-video overflow-hidden rounded-2xl border border-slate-200 bg-black shadow-sm transition-all duration-500 hover:border-brand-primary/50 hover:shadow-xl dark:border-white/10">
+      <video
+        [src]="'/api/videos/' + video.id + '/stream?v=' + video.updatedAt"
+        class="h-full w-full object-cover opacity-80 transition-opacity duration-500 group-hover:opacity-100"
+        muted
+        loop
+        playsinline
+        onmouseover="this.play()"
+        onmouseout="this.pause(); this.currentTime = 0;">
+      </video>
+
+      <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent"></div>
+
+      <div class="absolute inset-x-0 bottom-0 p-4">
+        <div class="truncate text-sm font-bold text-white" [title]="video.originalName">
+          {{ video.originalName }}
+        </div>
+        <div class="mt-2 flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-wider text-slate-200">
+          <span class="rounded bg-black/40 px-2 py-1">{{ (video.size / 1024 / 1024) | number:'1.1-2' }} MB</span>
+          <span class="rounded bg-black/40 px-2 py-1">{{ video.usageCount || 0 }} playlist</span>
+          <span class="rounded bg-black/40 px-2 py-1">{{ getProcessingLabel(video) }}</span>
+        </div>
+        <div class="mt-2 flex items-center justify-between gap-3">
+          <div class="min-w-0 truncate text-[11px] text-slate-300">
+            {{ formatUploadedAt(video.uploadedAt) }}
+            <span *ngIf="video.processingError" class="block truncate text-[10px] text-amber-300">
+              {{ video.processingError }}
+            </span>
+          </div>
+          <button
+            (click)="$event.stopPropagation(); delete.emit(video.id)"
+            class="rounded-lg bg-white/10 p-2 text-white backdrop-blur-md transition-colors hover:bg-red-500/20 hover:text-red-400"
+            title="Xoa video">
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </article>
+  </div>
+
+  <div *ngIf="filteredVideos.length === 0 && videos.length > 0"
+    class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center text-sm text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-slate-400">
+    Khong tim thay video phu hop voi bo loc hien tai.
+  </div>
 </div>
