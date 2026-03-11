@@ -64,8 +64,9 @@ export class ApiService {
 
     constructor(private http: HttpClient) { }
 
-    getVideos(): Observable<Video[]> {
-        return this.http.get<Video[]>(`${this.apiUrl}/videos`);
+    getVideos(noCache?: boolean): Observable<Video[]> {
+        const url = noCache ? `${this.apiUrl}/videos?_t=${Date.now()}` : `${this.apiUrl}/videos`;
+        return this.http.get<Video[]>(url);
     }
 
     getVideoPolicy(): Observable<VideoPolicy> {
@@ -120,8 +121,9 @@ export class ApiService {
         return this.http.delete(`${this.apiUrl}/videos/${id}`);
     }
 
-    getProfiles(): Observable<Profile[]> {
-        return this.http.get<Profile[]>(`${this.apiUrl}/profiles`);
+    getProfiles(noCache?: boolean): Observable<Profile[]> {
+        const url = noCache ? `${this.apiUrl}/profiles?_t=${Date.now()}` : `${this.apiUrl}/profiles`;
+        return this.http.get<Profile[]>(url);
     }
 
     getProfile(id: string): Observable<Profile> {

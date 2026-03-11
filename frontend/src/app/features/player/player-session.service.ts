@@ -266,12 +266,9 @@ export class PlayerSessionService {
           }
           this.profile.set(updatedProfile);
           this.isPlaylistUpdated = true;
-          this.statusMessage.set('Playlist đã được cập nhật từ dashboard.');
         }
       },
-      error: () => {
-        this.statusMessage.set('Không thể đồng bộ playlist lúc này.');
-      },
+      error: () => undefined,
     });
   }
 

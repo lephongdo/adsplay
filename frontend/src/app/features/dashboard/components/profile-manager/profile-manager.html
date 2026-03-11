@@ -277,7 +277,7 @@
   <app-confirm-modal
     [isOpen]="!!deletingProfileId"
     title="Xóa Màn Hình?"
-    message="Hành động này sẽ xóa cấu hình màn hình. Video vẫn được giữ lại trong kho."
+    [message]="deletingProfileIsOnline ? 'CẢNH BÁO: Màn hình này đang trực tuyến. Xóa màn hình sẽ làm lỗi hiển thị trên thiết bị ngay lập tức. Hành động này không thể hoàn tác.' : 'Hành động này sẽ xóa cấu hình màn hình. Video vẫn được giữ lại trong kho.'"
     confirmText="Xóa Màn Hình"
     (confirm)="confirmDelete()"
     (cancel)="cancelDelete()">

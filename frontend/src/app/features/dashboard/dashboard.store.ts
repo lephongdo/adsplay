@@ -41,8 +41,8 @@ export class DashboardStore {
     this.loading.set(true);
 
     forkJoin({
-      profiles: this.api.getProfiles(),
-      videos: this.api.getVideos(),
+      profiles: this.api.getProfiles(true),
+      videos: this.api.getVideos(true),
     })
       .pipe(
         finalize(() => this.loading.set(false)),

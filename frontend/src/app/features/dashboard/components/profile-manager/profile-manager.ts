@@ -147,6 +147,14 @@ export class ProfileManager {
     this.deletingProfileId = id;
   }
 
+  get deletingProfileIsOnline() {
+    if (!this.deletingProfileId) {
+      return false;
+    }
+    const profile = this.profiles.find((p) => p.id === this.deletingProfileId);
+    return profile ? this.isOnline(profile.lastSeen) : false;
+  }
+
   confirmDelete() {
     if (!this.deletingProfileId) {
       return;
