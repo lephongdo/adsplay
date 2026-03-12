@@ -5,6 +5,12 @@ jobs:
   build:
     name: Build Process
     runs-on: windows-latest
+    
+    # ĐÂY LÀ PHẦN QUAN TRỌNG NHẤT: Chỉ đường vào thư mục chứa code
+    defaults:
+      run:
+        working-directory: adsplay
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -21,12 +27,10 @@ jobs:
           flutter-version: '2.10.5'
           channel: 'stable'
 
-      - name: Fix Dependencies
-        run: |
-          flutter pub get
+      - name: Get Dependencies
+        run: flutter pub get
 
       - name: Build Android
-        # Sử dụng lệnh build apk cơ bản cho bản 2.x
         run: flutter build apk --release --no-sound-null-safety
 
       - name: Build Windows
@@ -39,5 +43,5 @@ jobs:
         with:
           name: App-Ready-To-Use
           path: |
-            build/app/outputs/flutter-apk/app-release.apk
-            build/windows/runner/Release/
+            adsplay/build/app/outputs/flutter-apk/app-release.apk
+            adsplay/build/windows/runner/Release/
