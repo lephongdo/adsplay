@@ -1,4 +1,4 @@
-name: Mobile and Desktop Packaging
+name: Build Old AdsPlay
 on: [push, workflow_dispatch]
 
 jobs:
@@ -13,31 +13,33 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
-          java-version: '17'
+          java-version: '11' # Dùng Java 11 cho các dự án cũ ổn định hơn
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.10.0' # Ép dùng bản cũ để khớp với code
+          flutter-version: '2.10.5' # ĐÂY LÀ PHIÊN BẢN GỐC CỦA ADSPLAY
           channel: 'stable'
 
-      - name: Get Dependencies
+      - name: Fix Dependencies
         run: |
-          flutter pub get # Không dùng upgrade nữa để giữ nguyên bản gốc của tác giả
+          # Lệnh này cực kỳ quan trọng để dọn dẹp các thư viện rác
+          flutter pub cache repair 
+          flutter pub get --no-example
 
       - name: Build Android
-        # Thêm --no-sound-null-safety nếu code quá cũ
-        run: flutter build apk --release --no-sound-null-safety 
+        # Thêm flag --no-sound-null-safety vì code này chưa nâng cấp bảo mật Dart mới
+        run: flutter build apk --release --no-sound-null-safety
 
       - name: Build Windows
         run: |
           flutter config --enable-windows-desktop
-          flutter build windows --release
+          flutter build windows --release --no-sound-null-safety
 
       - name: Save Results
         uses: actions/upload-artifact@v4
         with:
-          name: App-Files-Ready
+          name: App-Ready-To-Use
           path: |
             build/app/outputs/flutter-apk/app-release.apk
             build/windows/runner/Release/
