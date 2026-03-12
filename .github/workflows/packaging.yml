@@ -6,10 +6,10 @@ jobs:
     name: Build Process
     runs-on: windows-latest
     
-    # ĐÂY LÀ PHẦN QUAN TRỌNG NHẤT: Chỉ đường vào thư mục chứa code
+    # CHỈNH LẠI DÒNG NÀY: Dùng dấu chấm để máy ảo đứng ở thư mục gốc
     defaults:
       run:
-        working-directory: adsplay
+        working-directory: .
 
     steps:
       - name: Checkout Code
@@ -28,6 +28,7 @@ jobs:
           channel: 'stable'
 
       - name: Get Dependencies
+        # Nếu file pubspec.yaml nằm ngay ở ngoài, lệnh này sẽ chạy tốt
         run: flutter pub get
 
       - name: Build Android
@@ -43,5 +44,5 @@ jobs:
         with:
           name: App-Ready-To-Use
           path: |
-            adsplay/build/app/outputs/flutter-apk/app-release.apk
-            adsplay/build/windows/runner/Release/
+            **/build/app/outputs/flutter-apk/app-release.apk
+            **/build/windows/runner/Release/
