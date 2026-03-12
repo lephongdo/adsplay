@@ -1,0 +1,29 @@
+name: Build Multi-Platform
+on: [push, workflow_dispatch] # Chạy khi bạn nhấn nút hoặc update code
+
+jobs:
+  build:
+    name: Build Apps
+    runs-on: windows-latest # Mượn máy ảo Windows của GitHub
+    steps:
+      - uses: actions/checkout@v3
+      - uses: subosito/flutter-action@v2 # Cài đặt Flutter
+        with:
+          channel: 'stable'
+          
+      - name: Install dependencies
+        run: flutter pub get # Cài đặt thư viện cho app
+
+      - name: Build Windows
+        run: flutter build windows # Tạo file .exe
+
+      - name: Build Android APK
+        run: flutter build apk --split-per-abi # Tạo file .apk
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: release-files
+          path: |
+            build/windows/runner/Release/
+            build/app/outputs/flutter-apk/*.apk
