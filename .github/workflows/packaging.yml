@@ -18,12 +18,12 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: '3.19.0' # Bạn có thể thử đổi thành '3.19.0' nếu vẫn lỗi
+          flutter-version: '3.10.0' # Ép dùng bản cũ để khớp với code
+          channel: 'stable'
 
       - name: Get Dependencies
         run: |
-          flutter pub upgrade --major-versions
-          flutter pub get
+          flutter pub get # Không dùng upgrade nữa để giữ nguyên bản gốc của tác giả
 
       - name: Build Android
         # Thêm --no-sound-null-safety nếu code quá cũ
