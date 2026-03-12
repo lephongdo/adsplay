@@ -18,7 +18,7 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: 'stable' # Bạn có thể thử đổi thành '3.19.0' nếu vẫn lỗi
+          channel: '3.19.0' # Bạn có thể thử đổi thành '3.19.0' nếu vẫn lỗi
 
       - name: Get Dependencies
         run: |
