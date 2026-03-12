@@ -18,13 +18,16 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: 'stable'
+          channel: 'stable' # Bạn có thể thử đổi thành '3.19.0' nếu vẫn lỗi
 
       - name: Get Dependencies
-        run: flutter pub get
+        run: |
+          flutter pub upgrade --major-versions
+          flutter pub get
 
       - name: Build Android
-        run: flutter build apk --release
+        # Thêm --no-sound-null-safety nếu code quá cũ
+        run: flutter build apk --release --no-sound-null-safety 
 
       - name: Build Windows
         run: |
@@ -32,7 +35,7 @@ jobs:
           flutter build windows --release
 
       - name: Save Results
-        uses: actions/upload-artifact@v4 # Đảm bảo đúng v4 ở đây
+        uses: actions/upload-artifact@v4
         with:
           name: App-Files-Ready
           path: |
